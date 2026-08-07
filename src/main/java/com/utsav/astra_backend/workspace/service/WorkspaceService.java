@@ -1,6 +1,7 @@
 package com.utsav.astra_backend.workspace.service;
 
 import com.utsav.astra_backend.workspace.dto.*;
+import com.utsav.astra_backend.workspace.watcher.WorkspaceWatcherService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,6 +17,12 @@ import java.util.stream.Stream;
 @Service
 public class WorkspaceService {
 
+    private final WorkspaceWatcherService watcherService;
+
+    public WorkspaceService(WorkspaceWatcherService watcherService) {
+        this.watcherService = watcherService;
+    }
+
     public FileNodeResponse openWorkspace(String path) {
 
         Path workspace = Paths.get(path);
@@ -27,7 +34,7 @@ public class WorkspaceService {
         if (!Files.isDirectory(workspace)) {
             throw new IllegalArgumentException("Workspace is not a directory.");
         }
-
+        watcherService.startWatching(workspace);
         return buildTree(workspace, workspace);
     }
     private FileNodeResponse buildTree(Path root, Path current) {

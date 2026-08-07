@@ -1,0 +1,197 @@
+package com.utsav.astra_backend.workspace.watcher;
+
+import jakarta.annotation.PreDestroy;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+@Service
+public class WorkspaceWatcherService {
+
+    private final WatchService watchService;
+    private final Map<WatchKey, Path> watchKeys = new ConcurrentHashMap<>();
+
+    private ExecutorService watcherExecutor;
+
+    private volatile boolean watching = false;
+    private Path currentWorkspace;
+
+    public WorkspaceWatcherService() throws IOException {
+        this.watchService = FileSystems.getDefault().newWatchService();
+    }
+
+    public synchronized void startWatching(Path workspace) {
+
+        if (watching) {
+
+            if (workspace.equals(currentWorkspace)) {
+                return;
+            }
+
+            stopWatching();
+        }
+
+        try {
+
+            registerRecursively(workspace);
+
+            watcherExecutor = Executors.newSingleThreadExecutor();
+            watcherExecutor.submit(this::processEvents);
+
+            currentWorkspace = workspace;
+            watching = true;
+
+            System.out.println("====================================");
+            System.out.println("Watching Workspace");
+            System.out.println("Path : " + workspace);
+            System.out.println("====================================");
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public synchronized void stopWatching() {
+
+        watching = false;
+
+        currentWorkspace = null;
+
+        watchKeys.clear();
+
+        if (watcherExecutor != null) {
+            watcherExecutor.shutdownNow();
+        }
+
+        System.out.println("Workspace watcher stopped.");
+    }
+
+    private boolean shouldWatch(Path path) {
+
+        String name = path.getFileName().toString();
+
+        return !name.equals(".git")
+                && !name.equals("node_modules")
+                && !name.equals("target")
+                && !name.equals("build")
+                && !name.equals(".idea")
+                && !name.equals(".gradle")
+                && !name.equals(".vscode");
+    }
+
+    private void registerRecursively(Path root) throws IOException {
+
+        Files.walkFileTree(root, new SimpleFileVisitor<>() {
+
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir,
+                                                     BasicFileAttributes attrs)
+                    throws IOException {
+
+                if (!shouldWatch(dir)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+
+                registerDirectory(dir);
+
+                return FileVisitResult.CONTINUE;
+            }
+
+        });
+
+    }
+
+    private void registerDirectory(Path directory) throws IOException {
+
+        WatchKey key = directory.register(
+                watchService,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE,
+                StandardWatchEventKinds.ENTRY_MODIFY
+        );
+
+        watchKeys.put(key, directory);
+
+        System.out.println("Watching : " + directory);
+    }
+
+    private void processEvents() {
+
+        while (watching) {
+
+            WatchKey key;
+
+            try {
+                key = watchService.take();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
+            Path directory = watchKeys.get(key);
+
+            if (directory == null) {
+                key.reset();
+                continue;
+            }
+
+            for (WatchEvent<?> event : key.pollEvents()) {
+
+                WatchEvent.Kind<?> kind = event.kind();
+
+                if (kind == StandardWatchEventKinds.OVERFLOW) {
+                    continue;
+                }
+
+                Path relativePath = (Path) event.context();
+
+                Path absolutePath = directory.resolve(relativePath);
+
+                System.out.printf("[%s] %s%n",
+                        kind.name(),
+                        absolutePath);
+
+                if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+
+                    try {
+
+                        if (Files.isDirectory(absolutePath)) {
+                            registerRecursively(absolutePath);
+                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+
+            boolean valid = key.reset();
+
+            if (!valid) {
+                watchKeys.remove(key);
+            }
+
+        }
+
+    }
+
+    @PreDestroy
+    public void destroy() {
+
+        stopWatching();
+
+        try {
+            watchService.close();
+        } catch (IOException ignored) {
+        }
+
+    }
+
+}
