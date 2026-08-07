@@ -1,5 +1,6 @@
 package com.utsav.astra_backend.workspace.index;
 
+import com.utsav.astra_backend.parser.TreeSitterService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,6 +11,11 @@ import java.util.Collection;
 public class WorkspaceIndexService {
 
     private final WorkspaceIndex workspaceIndex = new WorkspaceIndex();
+    private final TreeSitterService treeSitterService;
+
+    public WorkspaceIndexService(TreeSitterService treeSitterService) {
+        this.treeSitterService = treeSitterService;
+    }
 
     public void indexWorkspace(Path workspace) {
 
@@ -43,6 +49,10 @@ public class WorkspaceIndexService {
                     HashUtil.sha256(file),
                     true
             );
+
+            if (isJavaFile(file)) {
+                treeSitterService.parse(file);
+            }
 
             workspaceIndex.getFiles().put(
                     file.toAbsolutePath().toString(),
@@ -88,6 +98,10 @@ public class WorkspaceIndexService {
     public int size() {
 
         return workspaceIndex.getFiles().size();
+    }
+
+    private boolean isJavaFile(Path file) {
+        return file.toString().endsWith(".java");
     }
 
 }
