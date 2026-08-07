@@ -1,6 +1,8 @@
 package com.utsav.astra_backend.workspace.watcher;
 
+import com.utsav.astra_backend.workspace.index.WorkspaceIndexService;
 import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Service
+@Slf4j
 public class WorkspaceWatcherService {
 
     private final WatchService watchService;
@@ -21,8 +24,9 @@ public class WorkspaceWatcherService {
 
     private volatile boolean watching = false;
     private Path currentWorkspace;
-
-    public WorkspaceWatcherService() throws IOException {
+    private final WorkspaceIndexService indexService;
+    public WorkspaceWatcherService(WorkspaceIndexService indexService) throws IOException {
+        this.indexService = indexService;
         this.watchService = FileSystems.getDefault().newWatchService();
     }
 
@@ -47,11 +51,6 @@ public class WorkspaceWatcherService {
             currentWorkspace = workspace;
             watching = true;
 
-            System.out.println("====================================");
-            System.out.println("Watching Workspace");
-            System.out.println("Path : " + workspace);
-            System.out.println("====================================");
-
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -69,7 +68,7 @@ public class WorkspaceWatcherService {
             watcherExecutor.shutdownNow();
         }
 
-        System.out.println("Workspace watcher stopped.");
+        log.info("Workspace watcher stopped.");
     }
 
     private boolean shouldWatch(Path path) {
@@ -150,24 +149,42 @@ public class WorkspaceWatcherService {
                 }
 
                 Path relativePath = (Path) event.context();
-
                 Path absolutePath = directory.resolve(relativePath);
 
                 System.out.printf("[%s] %s%n",
                         kind.name(),
                         absolutePath);
 
-                if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                try {
 
-                    try {
+                    if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
 
                         if (Files.isDirectory(absolutePath)) {
+
                             registerRecursively(absolutePath);
+
+                        } else {
+
+                            indexService.indexFile(absolutePath);
+
                         }
 
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+
+                        if (Files.isRegularFile(absolutePath)) {
+
+                            indexService.updateFile(absolutePath);
+
+                        }
+
+                    } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+
+                        indexService.removeFile(absolutePath);
+
                     }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
 
             }
