@@ -20,6 +20,9 @@ A local-first AI IDE backend inspired by Cursor.
 - Maven
 - Java NIO
 - Lombok
+## Frontend
+
+<img width="1800" height="932" alt="Screenshot (200)" src="https://github.com/user-attachments/assets/ac353b20-621b-41c4-ad8c-a9d7443f21e6" />
 
 ## Roadmap
 
