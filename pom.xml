@@ -60,6 +60,17 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>io.github.bonede</groupId>
+			<artifactId>tree-sitter</artifactId>
+			<version>0.26.6</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.github.bonede</groupId>
+			<artifactId>tree-sitter-java</artifactId>
+			<version>0.23.5</version>
+		</dependency>
 	</dependencies>
 
 	<build>
