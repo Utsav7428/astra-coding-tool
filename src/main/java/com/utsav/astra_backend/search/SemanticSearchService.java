@@ -1,5 +1,6 @@
 package com.utsav.astra_backend.search;
 
+import com.utsav.astra_backend.context.CodeContextService;
 import com.utsav.astra_backend.embedding.EmbeddingRecord;
 import com.utsav.astra_backend.embedding.EmbeddingService;
 import com.utsav.astra_backend.embedding.VectorStore;
@@ -13,13 +14,16 @@ public class SemanticSearchService {
 
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
+    private final CodeContextService codeContextService;
 
     public SemanticSearchService(
             EmbeddingService embeddingService,
-            VectorStore vectorStore
+            VectorStore vectorStore,
+            CodeContextService codeContextService
     ) {
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
+        this.codeContextService = codeContextService;
     }
 
     public List<SearchResult> search(
@@ -45,12 +49,9 @@ public class SemanticSearchService {
         return vectorStore.getAll()
                 .stream()
                 .map(record ->
-                        new SearchResult(
-                                record.symbol(),
-                                cosineSimilarity(
-                                        queryEmbedding,
-                                        record.embedding()
-                                )
+                        createResult(
+                                record,
+                                queryEmbedding
                         )
                 )
                 .sorted(
@@ -60,6 +61,26 @@ public class SemanticSearchService {
                 )
                 .limit(limit)
                 .toList();
+    }
+
+    private SearchResult createResult(
+            EmbeddingRecord record,
+            List<Float> queryEmbedding
+    ) {
+
+        double score =
+                cosineSimilarity(
+                        queryEmbedding,
+                        record.embedding()
+                );
+
+        return new SearchResult(
+                record.symbol(),
+                score,
+                codeContextService.getContext(
+                        record.symbol()
+                )
+        );
     }
 
     private double cosineSimilarity(
@@ -85,14 +106,12 @@ public class SemanticSearchService {
             double y = b.get(i);
 
             dotProduct += x * y;
-
             magnitudeA += x * x;
             magnitudeB += y * y;
         }
 
         if (magnitudeA == 0.0 ||
                 magnitudeB == 0.0) {
-
             return 0.0;
         }
 
