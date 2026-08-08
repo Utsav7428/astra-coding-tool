@@ -1,5 +1,6 @@
 package com.utsav.astra_backend.workspace.index;
 
+import com.utsav.astra_backend.embedding.EmbeddingIndexService;
 import com.utsav.astra_backend.parser.ParsedFile;
 import com.utsav.astra_backend.parser.Symbol;
 import com.utsav.astra_backend.parser.TreeSitterService;
@@ -18,18 +19,21 @@ public class WorkspaceIndexService {
             new WorkspaceIndex();
 
     private final TreeSitterService treeSitterService;
+    private final EmbeddingIndexService embeddingIndexService;
 
     public WorkspaceIndexService(
-            TreeSitterService treeSitterService
+            TreeSitterService treeSitterService, EmbeddingIndexService embeddingIndexService
     ) {
 
         this.treeSitterService =
                 treeSitterService;
+        this.embeddingIndexService = embeddingIndexService;
     }
 
     public void indexWorkspace(Path workspace) {
 
         workspaceIndex.clear();
+        embeddingIndexService.clear();
 
         try {
 
@@ -90,10 +94,19 @@ public class WorkspaceIndexService {
                         parsedFile.symbols()
                 );
 
+                embeddingIndexService.indexSymbols(
+                        file,
+                        parsedFile.symbols()
+                );
+
             } else {
 
                 workspaceIndex.removeSymbols(
                         filePath
+                );
+
+                embeddingIndexService.removeFile(
+                        file
                 );
             }
 
@@ -128,11 +141,14 @@ public class WorkspaceIndexService {
         workspaceIndex
                 .removeSymbols(filePath);
 
+        embeddingIndexService.removeFile(
+                file
+        );
+
         System.out.println(
                 "Removed : " + file
         );
     }
-
     public FileMetadata getMetadata(Path file) {
 
         return workspaceIndex
