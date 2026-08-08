@@ -44,28 +44,15 @@ public class TreeSitterService {
             extractSymbols(
                     root,
                     source,
+                    file.toAbsolutePath().toString(),
                     symbols
             );
-
-            System.out.println("--------------------------------");
-            System.out.println("Parsed : " + file);
-            System.out.println("Root   : " + root.getType());
-            System.out.println("Symbols: " + symbols.size());
-            System.out.println("--------------------------------");
-
-            for (Symbol symbol : symbols) {
-
-                System.out.println(
-                        symbol.type() +
-                                " : " +
-                                symbol.name()
-                );
-            }
 
             return new ParsedFile(
                     file.toAbsolutePath().toString(),
                     "java",
-                    root.toString()
+                    root.toString(),
+                    symbols
             );
 
         } catch (Exception e) {
@@ -80,48 +67,56 @@ public class TreeSitterService {
     private void extractSymbols(
             TSNode node,
             String source,
+            String filePath,
             List<Symbol> symbols
     ) {
 
-        String type = node.getType();
+        String nodeType = node.getType();
 
-        switch (type) {
+        switch (nodeType) {
 
-            case "class_declaration" ->
-                    addSymbol(
-                            node,
-                            "class",
-                            source,
-                            symbols
-                    );
+            case "class_declaration":
+                addSymbol(
+                        node,
+                        "class",
+                        source,
+                        filePath,
+                        symbols
+                );
+                break;
 
-            case "interface_declaration" ->
-                    addSymbol(
-                            node,
-                            "interface",
-                            source,
-                            symbols
-                    );
+            case "interface_declaration":
+                addSymbol(
+                        node,
+                        "interface",
+                        source,
+                        filePath,
+                        symbols
+                );
+                break;
 
-            case "method_declaration" ->
-                    addSymbol(
-                            node,
-                            "method",
-                            source,
-                            symbols
-                    );
+            case "constructor_declaration":
+                addSymbol(
+                        node,
+                        "constructor",
+                        source,
+                        filePath,
+                        symbols
+                );
+                break;
 
-            case "constructor_declaration" ->
-                    addSymbol(
-                            node,
-                            "constructor",
-                            source,
-                            symbols
-                    );
+            case "method_declaration":
+                addSymbol(
+                        node,
+                        "method",
+                        source,
+                        filePath,
+                        symbols
+                );
+                break;
 
-            default -> {
-                // Nothing to extract
-            }
+            default:
+                break;
         }
 
         int childCount = node.getNamedChildCount();
@@ -135,6 +130,7 @@ public class TreeSitterService {
                 extractSymbols(
                         child,
                         source,
+                        filePath,
                         symbols
                 );
             }
@@ -145,6 +141,7 @@ public class TreeSitterService {
             TSNode node,
             String symbolType,
             String source,
+            String filePath,
             List<Symbol> symbols
     ) {
 
@@ -155,22 +152,27 @@ public class TreeSitterService {
             return;
         }
 
-        String name = extractNodeText(
-                nameNode,
-                source
-        );
+        String name =
+                extractNodeText(
+                        nameNode,
+                        source
+                );
 
-        var start = node.getStartPoint();
-        var end = node.getEndPoint();
+        var startPoint =
+                node.getStartPoint();
+
+        var endPoint =
+                node.getEndPoint();
 
         symbols.add(
                 new Symbol(
                         name,
                         symbolType,
-                        start.getRow(),
-                        start.getColumn(),
-                        end.getRow(),
-                        end.getColumn()
+                        filePath,
+                        startPoint.getRow(),
+                        startPoint.getColumn(),
+                        endPoint.getRow(),
+                        endPoint.getColumn()
                 )
         );
     }
@@ -183,8 +185,11 @@ public class TreeSitterService {
         byte[] bytes =
                 source.getBytes(StandardCharsets.UTF_8);
 
-        int start = node.getStartByte();
-        int end = node.getEndByte();
+        int start =
+                node.getStartByte();
+
+        int end =
+                node.getEndByte();
 
         if (start < 0 ||
                 end > bytes.length ||
