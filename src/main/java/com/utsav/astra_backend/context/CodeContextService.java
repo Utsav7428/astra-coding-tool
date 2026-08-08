@@ -65,4 +65,72 @@ public class CodeContextService {
             );
         }
     }
+    public String collectContext(
+            String filePath,
+            int line
+    ) {
+
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException(
+                    "File path cannot be empty"
+            );
+        }
+
+        if (line < 0) {
+            throw new IllegalArgumentException(
+                    "Line cannot be negative"
+            );
+        }
+
+        Path path = Path.of(filePath);
+
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException(
+                    "File does not exist: " + filePath
+            );
+        }
+
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalArgumentException(
+                    "Path is not a file: " + filePath
+            );
+        }
+
+        try {
+
+            List<String> lines =
+                    Files.readAllLines(path);
+
+            int start =
+                    Math.max(
+                            0,
+                            line - 40
+                    );
+
+            int end =
+                    Math.min(
+                            lines.size(),
+                            line + 41
+                    );
+
+            StringBuilder context =
+                    new StringBuilder();
+
+            for (int i = start; i < end; i++) {
+
+                context
+                        .append(lines.get(i))
+                        .append(System.lineSeparator());
+            }
+
+            return context.toString();
+
+        } catch (IOException e) {
+
+            throw new RuntimeException(
+                    "Unable to read file: " + filePath,
+                    e
+            );
+        }
+    }
 }
