@@ -66,6 +66,10 @@ public class WorkspaceIndexService {
             String filePath =
                     file.toAbsolutePath().toString();
 
+            // Remove previous state for this file
+            workspaceIndex.removeSymbols(filePath);
+            embeddingIndexService.removeFile(file);
+
             FileMetadata metadata =
                     new FileMetadata(
                             file,
@@ -99,15 +103,6 @@ public class WorkspaceIndexService {
                         parsedFile.symbols()
                 );
 
-            } else {
-
-                workspaceIndex.removeSymbols(
-                        filePath
-                );
-
-                embeddingIndexService.removeFile(
-                        file
-                );
             }
 
         } catch (Exception e) {

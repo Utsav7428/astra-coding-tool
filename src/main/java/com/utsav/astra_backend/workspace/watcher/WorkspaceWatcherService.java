@@ -19,7 +19,10 @@ public class WorkspaceWatcherService {
 
     private final WatchService watchService;
     private final Map<WatchKey, Path> watchKeys = new ConcurrentHashMap<>();
+    private final Map<Path, Long> lastModifiedEvents =
+            new ConcurrentHashMap<>();
 
+    private static final long MODIFY_DEBOUNCE_MS = 500;
     private ExecutorService watcherExecutor;
 
     private volatile boolean watching = false;
@@ -63,7 +66,7 @@ public class WorkspaceWatcherService {
         currentWorkspace = null;
 
         watchKeys.clear();
-
+        lastModifiedEvents.clear();
         if (watcherExecutor != null) {
             watcherExecutor.shutdownNow();
         }
@@ -171,14 +174,36 @@ public class WorkspaceWatcherService {
 
                     } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
 
-                        if (Files.isRegularFile(absolutePath)) {
+                    if (Files.isRegularFile(absolutePath)) {
 
-                            indexService.updateFile(absolutePath);
+                        long now = System.currentTimeMillis();
 
+                        Long lastEvent =
+                                lastModifiedEvents.get(absolutePath);
+
+                        if (lastEvent != null &&
+                                now - lastEvent < MODIFY_DEBOUNCE_MS) {
+
+                            log.debug(
+                                    "Ignoring duplicate modify event: {}",
+                                    absolutePath
+                            );
+
+                            continue;
                         }
 
-                    } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                        lastModifiedEvents.put(
+                                absolutePath,
+                                now
+                        );
 
+                        indexService.updateFile(
+                                absolutePath
+                        );
+                    }
+
+                    } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                        lastModifiedEvents.remove(absolutePath);
                         indexService.removeFile(absolutePath);
 
                     }
