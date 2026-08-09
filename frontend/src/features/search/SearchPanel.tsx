@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import { FileCode2, Hash, Search, TerminalSquare } from "lucide-react";
+import { FileCode2, Hash, Loader2, Search, Sparkles, TerminalSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PanelHeader } from "@/components/layout/PanelHeader";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import { useFileOpener } from "@/hooks/use-file-opener";
+import { useSemanticSearch, useSymbolSearch } from "@/hooks/use-symbol-search";
 import { searchAll } from "./search.utils";
+import type { SymbolResult } from "@/services/search.service";
 import type { SearchResult } from "@/types";
 
 export function SearchPanel() {
@@ -12,6 +14,10 @@ export function SearchPanel() {
   const openFile = useFileOpener();
   const [query, setQuery] = useState("");
   const results = useMemo(() => searchAll(tree, query), [tree, query]);
+  const symbols = useSymbolSearch(query);
+  const semantic = useSemanticSearch(query);
+
+  const goToSymbol = (r: SymbolResult) => void openFile(r.filePath, { line: r.line, column: r.column });
 
   const section = (
     title: string,
@@ -46,7 +52,11 @@ export function SearchPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <PanelHeader title="Search" subtitle="files · symbols · commands" />
+      <PanelHeader title="Search" subtitle="files · symbols · semantic">
+        {(symbols.isFetching || semantic.isFetching) && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        )}
+      </PanelHeader>
       <div className="border-b border-border p-2.5">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -61,7 +71,10 @@ export function SearchPanel() {
       </div>
       <div className="flex-1 overflow-auto p-1.5">
         {section("Files", FileCode2, results.files, (r) => void openFile(r.id))}
-        {section("Symbols", Hash, results.symbols)}
+        {section("Symbols", Hash, symbols.data ?? [], (r) => goToSymbol(r as SymbolResult))}
+        {section("Semantic matches", Sparkles, semantic.data ?? [], (r) =>
+          goToSymbol(r as SymbolResult),
+        )}
         {section("Commands", TerminalSquare, results.commands)}
       </div>
     </div>

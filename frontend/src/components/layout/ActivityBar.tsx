@@ -1,4 +1,4 @@
-import { Files, GitBranch, MessageSquareCode, Search, Settings } from "lucide-react";
+import { Files, MessageSquareCode, Search, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useWorkspaceStore, type ActivityView } from "@/store/workspace.store";
@@ -7,7 +7,6 @@ const items: { view: ActivityView; icon: typeof Files; label: string }[] = [
   { view: "explorer", icon: Files, label: "Explorer" },
   { view: "search", icon: Search, label: "Search" },
   { view: "chat", icon: MessageSquareCode, label: "AI Chat" },
-  { view: "git", icon: GitBranch, label: "Source Control" },
   { view: "settings", icon: Settings, label: "Settings" },
 ];
 

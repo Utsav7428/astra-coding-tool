@@ -1,4 +1,4 @@
-import { TERMINAL_WS_URL, MOCK } from "./http";
+import { TERMINAL_WS_URL, MOCK_TERMINAL as MOCK } from "./http";
 
 export interface TerminalConnection {
   send: (data: string) => void;

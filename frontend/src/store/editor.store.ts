@@ -7,6 +7,8 @@ interface EditorState {
   loadingFileId: string | null;
   savingTabId: string | null;
   cursor: { line: number; column: number };
+  /** Set when a search result should scroll the editor to a position. */
+  reveal: { path: string; line: number; column: number } | null;
   openTab: (file: FileContent) => void;
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
@@ -15,6 +17,7 @@ interface EditorState {
   setLoadingFileId: (id: string | null) => void;
   setSavingTabId: (id: string | null) => void;
   setCursor: (line: number, column: number) => void;
+  setReveal: (reveal: { path: string; line: number; column: number } | null) => void;
   toggleReadonly: (id: string) => void;
 }
 
@@ -24,6 +27,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadingFileId: null,
   savingTabId: null,
   cursor: { line: 1, column: 1 },
+  reveal: null,
 
   openTab: (file) =>
     set((s) => {
@@ -61,6 +65,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setLoadingFileId: (loadingFileId) => set({ loadingFileId }),
   setSavingTabId: (savingTabId) => set({ savingTabId }),
   setCursor: (line, column) => set({ cursor: { line, column } }),
+  setReveal: (reveal) => set({ reveal }),
   toggleReadonly: (id) =>
     set({ tabs: get().tabs.map((t) => (t.id === id ? { ...t, readonly: !t.readonly } : t)) }),
 }));

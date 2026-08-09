@@ -1,7 +1,7 @@
 spring:
   application:
     name: astra-backend
-
+server.port: 8081
 astra:
   embedding:
     ollama:

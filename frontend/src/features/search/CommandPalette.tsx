@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/command";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import { useFileOpener } from "@/hooks/use-file-opener";
+import { useSymbolSearch } from "@/hooks/use-symbol-search";
 import { searchAll } from "./search.utils";
-import { toast } from "sonner";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -26,6 +26,7 @@ export function CommandPalette({ open, onOpenChange, onCommand }: CommandPalette
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => searchAll(tree, query), [tree, query]);
+  const symbols = useSymbolSearch(query);
 
   const close = () => {
     onOpenChange(false);
@@ -60,12 +61,12 @@ export function CommandPalette({ open, onOpenChange, onCommand }: CommandPalette
         </CommandGroup>
 
         <CommandGroup heading="Symbols">
-          {results.symbols.map((r) => (
+          {(symbols.data ?? []).slice(0, 8).map((r) => (
             <CommandItem
               key={r.id}
               value={`symbol ${r.label} ${r.detail}`}
               onSelect={() => {
-                toast.info(`Go to symbol ${r.label}`, { description: r.detail });
+                void openFile(r.filePath, { line: r.line, column: r.column });
                 close();
               }}
             >

@@ -1,5 +1,5 @@
 import type { FileNode, SearchResult } from "@/types";
-import { mockCommands, mockSymbols } from "@/services/mock-data";
+import { mockCommands } from "@/services/mock-data";
 
 export function flattenFiles(node: FileNode | null): SearchResult[] {
   if (!node) return [];
@@ -14,6 +14,7 @@ export function flattenFiles(node: FileNode | null): SearchResult[] {
   return out;
 }
 
+/** Files and commands are resolved locally; symbols come from the backend index. */
 export function searchAll(tree: FileNode | null, query: string) {
   const q = query.trim().toLowerCase();
   const files = flattenFiles(tree);
@@ -21,7 +22,6 @@ export function searchAll(tree: FileNode | null, query: string) {
     !q || r.label.toLowerCase().includes(q) || (r.detail ?? "").toLowerCase().includes(q);
   return {
     files: files.filter(match),
-    symbols: mockSymbols.filter(match),
     commands: mockCommands.filter(match),
   };
 }

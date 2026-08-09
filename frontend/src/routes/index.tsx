@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { TopBar } from "@/components/layout/TopBar";
@@ -9,7 +8,6 @@ import { ActivityBar } from "@/components/layout/ActivityBar";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { ExplorerPanel } from "@/features/workspace/ExplorerPanel";
 import { SearchPanel } from "@/features/search/SearchPanel";
-import { GitPanel } from "@/features/git/GitPanel";
 import { SettingsPanel } from "@/features/settings/SettingsPanel";
 import { CommandPalette } from "@/features/search/CommandPalette";
 import { EditorArea } from "@/features/editor/EditorArea";
@@ -17,11 +15,13 @@ import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import { AiChatPanel, type AiChatPanelHandle } from "@/features/chat/AiChatPanel";
 
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useAstraConnection } from "@/hooks/use-astra-connection";
+import { useLiveSync } from "@/hooks/use-live-sync";
 import { useSaveFile } from "@/hooks/use-save-file";
 import { useMounted } from "@/hooks/use-mounted";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import { useTerminalStore } from "@/store/terminal.store";
-import { workspaceService } from "@/services/workspace.service";
+import { basename } from "@/lib/language";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,11 +52,14 @@ function AstraWorkspaceRoute() {
 }
 
 function AstraWorkspace() {
+  useAstraConnection();
+  useLiveSync();
   const { activeView, sidebarOpen, toggleSidebar } = useWorkspaceStore();
   const terminalVisible = useTerminalStore((s) => s.visible);
   const toggleTerminal = useTerminalStore((s) => s.toggleVisible);
   const clearTerminal = useTerminalStore((s) => s.clear);
   const setActiveView = useWorkspaceStore((s) => s.setActiveView);
+  const rootPath = useWorkspaceStore((s) => s.rootPath);
 
   const saveFile = useSaveFile();
   const chatRef = useRef<AiChatPanelHandle>(null);
@@ -64,11 +67,6 @@ function AstraWorkspace() {
 
   const hLayout = useDefaultLayout({ id: "astra-h", panelIds: ["sidebar", "main", "chat"] });
   const vLayout = useDefaultLayout({ id: "astra-v", panelIds: ["editor", "terminal"] });
-
-  const { data: git } = useQuery({
-    queryKey: ["git", "status"],
-    queryFn: () => workspaceService.getGitStatus(),
-  });
 
   const onSave = useCallback(() => void saveFile(), [saveFile]);
   const onQuickOpen = useCallback(() => setPaletteOpen(true), []);
@@ -115,8 +113,6 @@ function AstraWorkspace() {
   const sidebar =
     activeView === "search" ? (
       <SearchPanel />
-    ) : activeView === "git" ? (
-      <GitPanel />
     ) : activeView === "settings" ? (
       <SettingsPanel />
     ) : (
@@ -179,7 +175,7 @@ function AstraWorkspace() {
         </Group>
       </div>
 
-      <StatusBar branch={git?.branch ?? "main"} />
+      <StatusBar workspace={rootPath ? basename(rootPath) : "no workspace"} />
 
       <CommandPalette
         open={paletteOpen}

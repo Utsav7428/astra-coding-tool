@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUp, Bot, Plus, Square, User } from "lucide-react";
+import { ArrowUp, Bot, FileCode2, Plus, Square, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -16,6 +16,7 @@ import { Markdown } from "./Markdown";
 import { useChatController } from "./useChatController";
 import { chatService } from "@/services/chat.service";
 import { useChatStore } from "@/store/chat.store";
+import { useEditorStore } from "@/store/editor.store";
 import { cn } from "@/lib/utils";
 
 export interface AiChatPanelHandle {
@@ -30,6 +31,10 @@ const suggestions = [
 
 export const AiChatPanel = forwardRef<AiChatPanelHandle>(function AiChatPanel(_props, ref) {
   const { messages, model, setModel, isStreaming, clear } = useChatStore();
+  const contextFile = useEditorStore((s) => {
+    const active = s.tabs.find((t) => t.id === s.activeTabId) ?? s.tabs[s.tabs.length - 1];
+    return active?.content ? active : null;
+  });
   const { send, stop } = useChatController();
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -112,6 +117,16 @@ export const AiChatPanel = forwardRef<AiChatPanelHandle>(function AiChatPanel(_p
       </div>
 
       <div className="border-t border-border p-2.5">
+        <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <FileCode2 className="h-3 w-3" />
+          {contextFile ? (
+            <span className="truncate" title={contextFile.path}>
+              Context: <span className="text-foreground">{contextFile.name}</span>
+            </span>
+          ) : (
+            <span>No file in context — open a file to include it</span>
+          )}
+        </div>
         <div className="rounded-lg border border-border bg-surface focus-within:border-primary/60">
           <Textarea
             ref={inputRef}
