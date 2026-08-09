@@ -4,6 +4,9 @@ import com.utsav.astra_backend.embedding.EmbeddingIndexService;
 import com.utsav.astra_backend.parser.ParsedFile;
 import com.utsav.astra_backend.parser.Symbol;
 import com.utsav.astra_backend.parser.TreeSitterService;
+import com.utsav.astra_backend.websocket.IndexUpdatedPayload;
+import com.utsav.astra_backend.websocket.WebSocketEventPublisher;
+import com.utsav.astra_backend.websocket.WebSocketEventType;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -20,14 +23,15 @@ public class WorkspaceIndexService {
 
     private final TreeSitterService treeSitterService;
     private final EmbeddingIndexService embeddingIndexService;
-
+    private final WebSocketEventPublisher eventPublisher;
     public WorkspaceIndexService(
-            TreeSitterService treeSitterService, EmbeddingIndexService embeddingIndexService
+            TreeSitterService treeSitterService, EmbeddingIndexService embeddingIndexService, WebSocketEventPublisher eventPublisher
     ) {
 
         this.treeSitterService =
                 treeSitterService;
         this.embeddingIndexService = embeddingIndexService;
+        this.eventPublisher = eventPublisher;
     }
 
     public void indexWorkspace(Path workspace) {
@@ -101,6 +105,13 @@ public class WorkspaceIndexService {
                 embeddingIndexService.indexSymbols(
                         file,
                         parsedFile.symbols()
+                );
+                eventPublisher.publish(
+                        WebSocketEventType.INDEX_UPDATED,
+                        new IndexUpdatedPayload(
+                                filePath,
+                                parsedFile.symbols().size()
+                        )
                 );
 
             }
